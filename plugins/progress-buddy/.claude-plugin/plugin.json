@@ -1,6 +1,6 @@
 {
   "name": "progress-buddy",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A progress band with a little coral friend for Claude Code: task and subtask lines, a gradient progress bar, subagent helpers and moods that follow what Claude is doing.",
   "author": { "name": "karrot0", "url": "https://github.com/karrot0" },
   "homepage": "https://github.com/karrot0/claude-buddy",

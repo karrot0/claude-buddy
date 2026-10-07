@@ -157,3 +157,46 @@ test('once a turn is over the face keeps cycling through moods', async ($, on) =
 
   expect(new Set(seen).size).toBeGreaterThan(2)
 })
+
+test('a band that never comes alive is replaced by a plain bar; a live one is left alone', async ($, on) => {
+  const clock = mock.clock(on)
+  on('agent.list', () => ({ value: [] }))
+  on('tool.register', () => ({ value: { tool: 'mcp__progress-buddy__set_tasks' } }) as never)
+  on('session.start', (_, e) => ({ cwd: e.cwd }) as never)
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true } as never)
+  await $.tool.call({
+    tool: 'mcp__progress-buddy__set_tasks',
+    title: 'Changing the animation',
+    todos: [
+      { content: 'Plan', status: 'completed' },
+      { content: 'Build', activeForm: 'Building', status: 'in_progress' },
+    ],
+  })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Client' })).toBeDefined()
+
+  await clock.advance(7000)
+  expect(await ui.find({ type: 'Client' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: '1/2 · 50%' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Building' })).toBeDefined()
+  expect(await ui.find({ type: 'Svg' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a band that sends its heartbeat keeps the animated bar', async ($, on) => {
+  const clock = mock.clock(on)
+  on('agent.list', () => ({ value: [] }))
+  on('tool.register', () => ({ value: { tool: 'mcp__progress-buddy__set_tasks' } }) as never)
+  on('session.start', (_, e) => ({ cwd: e.cwd }) as never)
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true } as never)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.advance(300)
+  await clock.advance(7000)
+  expect(await ui.find({ type: 'Client' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'Ready', ...IN })).toBeDefined()
+  await ui.unmount()
+})

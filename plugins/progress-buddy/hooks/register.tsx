@@ -209,6 +209,29 @@ let cycleAt = 0
 const CYCLE: Mood[] = ['happy', 'looking', 'sleepy', 'thinking']
 const CYCLE_MS = 4500
 
+// The animated band posts a heartbeat four times a second. If one was drawn and none has ever arrived,
+// the surface could not run it, so the hooks module draws a plain bar itself instead.
+// ponytail: sticky for the session once tripped; retry the animated band on a new prompt if that proves too strict.
+const WATCHDOG_MS = 3000
+const PLAIN_CELLS = 30
+let beats = 0
+let silentChecks = 0
+let isBandShown = false
+let isPlain = false
+
+function watchdog($: EngineInterface) {
+  if (isPlain || !isBandShown || beats > 0) {
+    return
+  }
+
+  silentChecks += 1
+
+  if (silentChecks >= 2) {
+    isPlain = true
+    $.ui.invalidate('ui.render')
+  }
+}
+
 function write($: Parameters<typeof update>[0], fn: (list: Task[]) => Task[]) {
   return update($, tasks, list => fn(list ?? []))
 }
@@ -333,6 +356,10 @@ export const register: Register = on => {
     }
 
     activityNow = describe(e as Record<string, unknown>).slice(0, 120)
+
+    if (isPlain) {
+      $.ui.invalidate('ui.render')
+    }
     await setMood($, CODING.includes(tool) ? 'coding' : LOOKING.includes(tool) ? 'looking' : 'working')
 
     const ran = await next(e)
@@ -380,6 +407,7 @@ export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     $.clock.every(CYCLE_MS, () => void cycle($))
+    $.clock.every(WATCHDOG_MS, () => watchdog($))
 
     await $.tool.register({
       name: 'set_tasks',
@@ -474,7 +502,15 @@ export const register: Register = on => {
     return ran
   })
 
-  on('ui.message', async ($, e, next) => (e.element === 'band' ? { props: await bandProps($) } : next(e)))
+  on('ui.message', async ($, e, next) => {
+    if (e.element !== 'band') {
+      return next(e)
+    }
+
+    beats += 1
+
+    return { props: await bandProps($) }
+  })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const props = await bandProps($)
@@ -503,20 +539,41 @@ export const register: Register = on => {
       )
     }
 
-    if (e.surface === 'terminal' || e.surface === 'desktop') {
+    if (!isPlain && (e.surface === 'terminal' || e.surface === 'desktop')) {
+      isBandShown = true
       band = $.ui.resolve(e).Client({ key: 'band', module: './band.tsx', props, flexGrow: 1 })
     } else {
+      const share = props.complete ? 1 : props.total > 0 ? props.done / props.total : 0
+      const filled = Math.round(share * PLAIN_CELLS)
+      const accent = props.complete ? '#4ade80' : '#8b5cf6'
+      const label = props.complete
+        ? props.total > 0
+          ? ` ✓ ${props.done}/${props.total} · 100%`
+          : ' ✓ Done'
+        : props.total > 0
+          ? ` ${props.done}/${props.total} · ${Math.round(share * 100)}%`
+          : ''
+
       band = (
         <Box flexDirection="column">
           <Text bold wrap="truncate-end">
             {props.task}
           </Text>
+          <Box>
+            <Text color={accent}>{'█'.repeat(filled)}</Text>
+            <Text dimColor>{'░'.repeat(PLAIN_CELLS - filled)}</Text>
+            <Text bold color={accent}>
+              {label}
+            </Text>
+          </Box>
           <Text dimColor wrap="truncate-end">
-            {props.total > 0 ? `${props.done}/${props.total} · ${Math.round((props.done / props.total) * 100)}%` : props.complete ? '✓ Done' : '…'}
+            {props.complete ? '✓ Done' : props.subtask}
           </Text>
-          <Text dimColor wrap="truncate-end">
-            {props.subtask}
-          </Text>
+          {props.agents.slice(0, 3).map(a => (
+            <Text dimColor wrap="truncate-end">
+              {`↳ ${a.label} · ${a.activity}`}
+            </Text>
+          ))}
         </Box>
       )
     }

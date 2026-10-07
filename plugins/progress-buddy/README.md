@@ -12,6 +12,7 @@ A progress band for [Claude Code](https://claude.com/claude-code) with a little 
 - **A gradient progress bar** that fills as steps finish, eases toward its new value, and flows pink → violet → cyan. With no step list it shows a sweeping loader instead.
 - **Done state.** When the work finishes the bar fills, turns green, pulses, and reads `✓ Done`. It stays until your next prompt.
 - **Always there.** The band is visible from the start of a session. Idle, it says "Ready when you are".
+- **A plain fallback.** If the surface cannot run the animated band, the plugin notices within a few seconds and draws a plain, unanimated bar with the same information instead.
 - **A buddy with moods.** The face follows the work: thinking, looking (reading and searching), working (shell and other tools), coding (edits and writes, with a laptop), oops (a tool failed), happy (done), sleepy. Between turns it cycles through faces.
 - **Subagents.** Each running subagent gets its own line (`↳ Explore · find the login code · Reading auth.ts`) and a small working copy of the buddy beside the main one (up to three).
 
@@ -47,7 +48,7 @@ Start a new session and send a prompt.
 
 ## What the plugin does with your session
 
-Everything runs locally inside Claude Code. The plugin makes no network requests, spawns no processes, reads and writes no files, and does not depend on or call any other plugin. It uses only these calls on the hook object: `$.state.get`/`set` (its own few values), `$.clock.every` (a timer that cycles the face while idle), `$.tool.register` (adds one tool, below), `$.agent.list` (read-only list of running subagents), and `$.ui.resolve` (to draw).
+Everything runs locally inside Claude Code. The plugin makes no network requests, spawns no processes, reads and writes no files, and does not depend on or call any other plugin. It uses only these calls on the hook object: `$.state.get`/`set` (its own few values), `$.clock.every` (two timers: one cycles the face while idle, one checks the band is alive), `$.tool.register` (adds one tool, below), `$.agent.list` (read-only list of running subagents), `$.ui.resolve` (to draw), and `$.ui.invalidate` (to redraw the band).
 
 **It never submits a prompt of its own, runs a tool or command itself, changes a tool's input, or blocks another tool's call.** Every hook below passes the event on unchanged, except that its own tool refuses malformed input.
 
