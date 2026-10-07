@@ -2,7 +2,7 @@
 
 A progress band for [Claude Code](https://claude.com/claude-code) with a little coral friend. It sits above the prompt and shows what Claude is working on, how far along it is, and what it is doing right now.
 
-![Claude Buddy: the band while thinking, coding, running subagents and finished, plus the seven moods](https://raw.githubusercontent.com/karrot0/claude-buddy/main/docs/demo.png)
+![Claude Buddy: the band while thinking, coding, in the console, using tools, running subagents and finished, plus the moods and outfits](https://raw.githubusercontent.com/karrot0/claude-buddy/main/docs/demo.png)
 
 *The faces are the plugin's own SVG. The bar is drawn as text cells, as it is in the app.*
 
@@ -13,7 +13,8 @@ A progress band for [Claude Code](https://claude.com/claude-code) with a little 
 - **Done state.** When the work finishes the bar fills, turns green, pulses, and reads `✓ Done`. It stays until your next prompt.
 - **Always there.** The band is visible from the start of a session. Idle, it says "Ready when you are".
 - **A plain fallback.** If the surface cannot run the animated band, the plugin notices within a few seconds and draws a plain, unanimated bar with the same information instead.
-- **A buddy with moods.** The face follows the work: thinking, looking (reading and searching), working (shell and other tools), coding (edits and writes, with a laptop), oops (a tool failed), happy (done), sleepy. Between turns it cycles through faces.
+- **A buddy with moods.** The face follows the work: thinking, looking (reading and searching), coding (edits and writes, at a laptop), console (shell commands, behind a little terminal), tool (everything else, with a wrench and spinning gears), oops (a tool failed), happy (done), sleepy. Between turns it cycles through faces.
+- **Clothes.** Hats and a jacket that sit on the body, so they follow every face and animation. A party hat when the work is done, a nightcap when asleep, a hard hat and hi-vis vest for tools; otherwise an everyday cap or beanie and a jacket or hoodie that change with each new task.
 - **Subagents.** Each running subagent gets its own line (`↳ Explore · find the login code · Reading auth.ts`) and a small working copy of the buddy beside the main one (up to three).
 
 ## Install
@@ -40,7 +41,8 @@ Start a new session and send a prompt.
 | --- | --- |
 | thinking | after you send a prompt, before any tool runs |
 | looking | `Read`, `Grep`, `Glob`, web fetch and search |
-| working | shell commands and other tools |
+| console | shell commands (`Bash`, `PowerShell`) |
+| tool | every other tool: MCP tools, skills, agents |
 | coding | `Edit`, `Write`, `NotebookEdit` |
 | oops | a tool call returned an error |
 | happy | the turn finished with every step done |

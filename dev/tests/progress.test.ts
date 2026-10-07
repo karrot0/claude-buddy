@@ -200,3 +200,27 @@ test('a band that sends its heartbeat keeps the animated bar', async ($, on) => 
   expect(await ui.find({ type: 'Text', text: 'Ready', ...IN })).toBeDefined()
   await ui.unmount()
 })
+
+test('shell commands show the console face and other tools the tool face', async ($, on) => {
+  on('agent.list', () => ({ value: [] }))
+  on('tool.call', { tool: 'Bash' }, () => ({ result: {} as never }))
+  on('tool.call', { tool: 'Skill' }, () => ({ result: {} as never }))
+
+  await $.tool.call({ tool: 'Bash', command: 'npm test', description: 'Run the tests' } as never)
+
+  const shell = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await shell.find({ type: 'Text', text: '(•_•)>_' })).toBeDefined()
+  expect(await shell.find({ type: 'Text', text: 'Run the tests', ...IN })).toBeDefined()
+  await shell.unmount()
+
+  await $.tool.call({ tool: 'Skill', skill: 'pdf' } as never)
+
+  const tool = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await tool.find({ type: 'Text', text: '(•̀ᴗ•́)و' })).toBeDefined()
+  expect(await tool.find({ type: 'Text', text: 'Loading skill pdf', ...IN })).toBeDefined()
+  await tool.unmount()
+
+  const drawn = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await drawn.find({ type: 'Svg' })).toBeDefined()
+  await drawn.unmount()
+})

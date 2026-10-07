@@ -2,7 +2,7 @@
 
 A progress band for [Claude Code](https://claude.com/claude-code) with a little coral friend. It sits above the prompt and shows what Claude is working on, how far along it is, and what it is doing right now.
 
-![Claude Buddy: the band while thinking, coding, running subagents and finished, plus the seven moods](docs/demo.png)
+![Claude Buddy: the band while thinking, coding, in the console, using tools, running subagents and finished, plus the moods and outfits](docs/demo.png)
 
 *The faces are the plugin's own SVG. The bar is drawn as text cells, as it is in the app.*
 

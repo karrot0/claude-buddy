@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Mood, Run, Task } from '../types'
+import type { Hat, Jacket, Mood, Outfit, Run, Task } from '../types'
 
 const BODY = '#D97757'
 const SHADE = '#C4623F'
@@ -13,6 +13,8 @@ const KAOMOJI: Record<Mood, string> = {
   looking: '(◉_◉)',
   working: '(•̀_•́)',
   coding: '(•̀_•́)⌨',
+  console: '(•_•)>_',
+  tool: '(•̀ᴗ•́)و',
   oops: '(°□°)',
   happy: '(^‿^)',
   sleepy: '(-_-) z',
@@ -76,6 +78,27 @@ svg{overflow:visible}
 @keyframes screenlight{from{opacity:.06}to{opacity:.2}}
 @keyframes rise{0%{opacity:0;transform:translateY(5px)}20%{opacity:1}100%{opacity:0;transform:translateY(-12px)}}
 
+.m-console .e{transform:translate(0,2.2px) scale(1,.9)}
+.m-console .eyes{animation:scan 2.6s ease-in-out infinite alternate}
+.m-console .al{transform:translate(6px,11px) rotate(-12deg)}
+.m-console .ar{transform:translate(-6px,11px) rotate(12deg)}
+.cur{animation:cursor 1s steps(1,end) infinite}
+.ln{transform-box:fill-box;transform-origin:0% 50%;animation:print 2.6s steps(6,end) infinite}
+.ln2{animation-delay:.9s}
+@keyframes scan{from{transform:translate(-1.8px,0)}to{transform:translate(1.8px,0)}}
+@keyframes cursor{0%{opacity:1}50%{opacity:0}}
+@keyframes print{0%{transform:scaleX(0)}55%,100%{transform:scaleX(1)}}
+
+.m-tool .el{transform:translate(0,.6px) rotate(9deg) scale(1.3,.58)}
+.m-tool .er{transform:translate(0,.6px) rotate(-9deg) scale(1.3,.58)}
+.m-tool .bg{animation:type .5s ease-in-out infinite alternate}
+.m-tool .ar{transform:rotate(-34deg)}
+.gear{transform-box:fill-box;transform-origin:center;animation:spin 2.8s linear infinite}
+.gear2{animation-duration:2s;animation-direction:reverse}
+.wrench{transform-box:view-box;transform-origin:56px 30px;animation:tighten .5s ease-in-out infinite alternate}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes tighten{from{transform:rotate(-8deg)}to{transform:rotate(8deg)}}
+
 .m-oops .el{transform:translate(1px,-1.6px) rotate(-12deg) scale(.88,1)}
 .m-oops .er{transform:translate(-1px,-1.6px) rotate(12deg) scale(.88,1)}
 .m-oops .sw{animation:shake .12s linear infinite}
@@ -138,20 +161,102 @@ const LAPTOP =
   `<rect x="15" y="40" width="34" height="2.2" rx="1.1" fill="#4A4A55"/>` +
   `<g class="logo" stroke="${BODY}" stroke-width="1.5" stroke-linecap="round"><path d="M32 43.8v5.8M29.1 45.4l5.8 2.6M34.9 45.4l-5.8 2.6"/></g>`
 
+// A terminal window facing us: a blinking prompt and two lines of output printing.
+const TERMINAL =
+  `<rect x="11" y="38.5" width="42" height="18.5" rx="3" fill="#0F1014" stroke="#3A3A44" stroke-width=".8"/>` +
+  `<path d="M11 43.4V41.5a3 3 0 0 1 3-3h36a3 3 0 0 1 3 3v1.9z" fill="#2A2A31"/>` +
+  `<circle cx="14.6" cy="41" r=".95" fill="#FF5F57"/><circle cx="17.6" cy="41" r=".95" fill="#FEBC2E"/><circle cx="20.6" cy="41" r=".95" fill="#28C840"/>` +
+  `<path d="M14.6 46.2l2.4 1.9l-2.4 1.9" fill="none" stroke="${CODE}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>` +
+  `<rect class="cur" x="18.8" y="49.2" width="3.2" height="1.2" fill="${CODE}"/>` +
+  `<rect class="ln ln1" x="14.4" y="52" width="20" height="1.2" rx=".6" fill="#6B6B78"/>` +
+  `<rect class="ln ln2" x="14.4" y="54.3" width="13" height="1.2" rx=".6" fill="#55555F"/>`
+
+const STEEL = '#B9BEC9'
+
+const gear = (cls: string, cx: number, cy: number, r: number) =>
+  `<g class="gear ${cls}"><circle cx="${cx}" cy="${cy}" r="${r * 0.62}" fill="none" stroke="${STEEL}" stroke-width="${r * 0.5}"/>` +
+  Array.from(
+    { length: 8 },
+    (_, k) =>
+      `<rect x="${cx - r * 0.2}" y="${cy - r}" width="${r * 0.4}" height="${r * 0.42}" rx=".4" fill="${STEEL}" transform="rotate(${k * 45} ${cx} ${cy})"/>`,
+  ).join('') +
+  `</g>`
+
+const WRENCH =
+  `<g class="wrench" fill="none" stroke="${STEEL}" stroke-linecap="round"><path d="M58 27L57 14" stroke-width="2.6"/>` +
+  `<path d="M54.3 12.6a3.2 3.2 0 1 1 5 .7" stroke-width="2.4"/></g>`
+
+const NO_OUTFIT: Outfit = { hat: 'none', jacket: 'none' }
+
+// Clothes are drawn inside the body group, so they ride every pose and animation without knowing about it.
+const HATS: Record<Hat, string> = {
+  none: '',
+  cap:
+    `<path d="M18.5 17Q32 -5 45.5 17Z" fill="#3B82F6"/><path d="M41 15.6Q51 13.8 55.4 18.2Q48 18.6 41.4 17.6Z" fill="#2563EB"/>` +
+    `<circle cx="32" cy="6.6" r="1.3" fill="#2563EB"/>`,
+  beanie:
+    `<path d="M17.6 18Q32 -9 46.4 18Z" fill="#EF6F6C"/><path d="M16.8 15.2h30.4v3.6q-15.2 3-30.4 0z" fill="#D9534F"/>` +
+    `<circle cx="32" cy="3.6" r="3" fill="#FCE9E8"/>`,
+  party:
+    `<path d="M24.5 16L32 -5L39.5 16Z" fill="#8B5CF6"/><path d="M27.3 8.2l7.9 3.2M25.6 13l10.4 2.6" stroke="#FDE047" stroke-width="1.5" stroke-linecap="round"/>` +
+    `<circle cx="32" cy="-5.6" r="2.4" fill="#FDE047"/>`,
+  hardhat:
+    `<path d="M18 17Q32 -7 46 17Z" fill="#FACC15"/><rect x="14.5" y="15.4" width="35" height="3.4" rx="1.7" fill="#EAB308"/>` +
+    `<path d="M32 6.4V15" stroke="#EAB308" stroke-width="2.4" stroke-linecap="round"/>`,
+  nightcap:
+    `<path d="M18.4 17.4Q27 -6 43 5Q51.6 10 53.4 20Q47 14.6 44.6 17Z" fill="#60A5FA"/><path d="M17.4 15.2h28.4v3.4q-14.2 2.6-28.4 0z" fill="#DBEAFE"/>` +
+    `<circle cx="53.6" cy="21.4" r="2.7" fill="#F8FAFC"/>`,
+}
+
+const torso = (fill: string, details: string) =>
+  `<g clip-path="url(#bd)"><path d="M8 42.5Q32 38.5 56 42.5V54H8Z" fill="${fill}"/>${details}</g>`
+
+const JACKETS: Record<Jacket, { sleeve: string; front: string }> = {
+  none: { sleeve: SHADE, front: '' },
+  jacket: {
+    sleeve: '#2F4A7A',
+    front: torso(
+      '#3B5B92',
+      `<path d="M32 40.4V53" stroke="#22365C" stroke-width="1.2"/><path d="M32 40.4h-6.5l6.5 6.6zM32 40.4h6.5l-6.5 6.6z" fill="#587BB8"/>`,
+    ),
+  },
+  hoodie: {
+    sleeve: '#5B4BC4',
+    front: torso(
+      '#6D5BD0',
+      `<path d="M29 40.6v6M35 40.6v6" stroke="#EDE9FE" stroke-width="1.1" stroke-linecap="round"/><path d="M24 47.6h16v3.2h-16z" fill="#5B4BC4"/>`,
+    ),
+  },
+  vest: {
+    sleeve: SHADE,
+    front: torso(
+      '#F59E0B',
+      `<rect x="8" y="45" width="48" height="2.6" fill="#E5E7EB"/><path d="M32 40.4V53" stroke="#B45309" stroke-width="1.2"/>`,
+    ),
+  },
+}
+
 const EXTRAS: Record<Mood, string> = {
   thinking: '',
   looking: '',
   working: '',
   coding: LAPTOP + glyph('code1', 3, 22) + glyph('code2', 49, 20) + glyph('code3', 25, 12),
+  console: TERMINAL,
+  tool: gear('gear1', 9, 15, 6) + gear('gear2', 18.4, 5.4, 3.6),
   oops: `<path class="drop" d="M51 8Q47.8 12.6 51 14.8Q54.2 12.6 51 8Z" fill="#7CC4FF"/>`,
   happy: star('sp1', 53, 10, 4.6) + star('sp2', 10, 14, 3.2),
   sleepy: zed('z1', 45, 15, 4.4) + zed('z2', 45, 15, 4.4) + zed('z3', 45, 15, 4.4),
 }
 
 const BUDDY = 26
+const HEADROOM = 16
+const FACE_SCALE = 0.75
+const FACE_HEIGHT = Math.round((64 + HEADROOM) * FACE_SCALE)
+const BODY_PATH = 'M32 12C46.3 12 55 19.6 55 32C55 44.4 46.3 52 32 52C17.7 52 9 44.4 9 32C9 19.6 17.7 12 32 12Z'
 
-function figure(mood: Mood): string {
+function figure(mood: Mood, outfit: Outfit): string {
   const isHappy = mood === 'happy'
+  const jacket = JACKETS[outfit.jacket]
   const eyes = isHappy
     ? arc(LEFT_X) + arc(RIGHT_X)
     : eye('el', LEFT_X) + eye('er', RIGHT_X)
@@ -167,30 +272,34 @@ function figure(mood: Mood): string {
     `<g class="sw">` +
     `<rect x="19" y="47" width="9" height="9.6" rx="3.8" fill="${SHADE}"/><rect x="36" y="47" width="9" height="9.6" rx="3.8" fill="${SHADE}"/>` +
     `<g class="bg">` +
-    `<rect class="al" x="3.4" y="28" width="9" height="7.4" rx="3.7" fill="${SHADE}"/><rect class="ar" x="51.6" y="28" width="9" height="7.4" rx="3.7" fill="${SHADE}"/>` +
-    `<path d="M32 12C46.3 12 55 19.6 55 32C55 44.4 46.3 52 32 52C17.7 52 9 44.4 9 32C9 19.6 17.7 12 32 12Z" fill="${BODY}"/>` +
+    `<rect class="al" x="3.4" y="28" width="9" height="7.4" rx="3.7" fill="${jacket.sleeve}"/><rect class="ar" x="51.6" y="28" width="9" height="7.4" rx="3.7" fill="${jacket.sleeve}"/>` +
+    `<path d="${BODY_PATH}" fill="${BODY}"/>` +
     `<ellipse cx="22.5" cy="19.6" rx="9" ry="3.6" transform="rotate(-18 22.5 19.6)" fill="#fff" opacity=".17"/>` +
+    jacket.front +
     cheeks +
     `<g class="eyes">${eyes}</g>` +
+    HATS[outfit.hat] +
+    (mood === 'tool' ? WRENCH : '') +
     `</g></g>` +
     EXTRAS[mood] +
     `</g>`
   )
 }
 
-// One small working copy beside the main blob per running subagent.
-function face(mood: Mood, buddies = 0): string {
+// One small working copy beside the main blob per running subagent. The box has headroom above for hats and the hop.
+function face(mood: Mood, buddies = 0, outfit: Outfit = NO_OUTFIT): string {
   const n = Math.max(0, Math.min(3, buddies))
   const width = 64 + n * BUDDY
   const minis = Array.from(
     { length: n },
-    (_, i) => `<g transform="translate(${66 + i * BUDDY} 35) scale(.42)">${figure('working')}</g>`,
+    (_, i) => `<g transform="translate(${66 + i * BUDDY} 35) scale(.42)">${figure('working', NO_OUTFIT)}</g>`,
   ).join('')
 
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 64" width="${Math.round(width * 0.75)}" height="48">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ${-HEADROOM} ${width} ${64 + HEADROOM}" width="${Math.round(width * FACE_SCALE)}" height="${FACE_HEIGHT}">` +
     `<style>${CSS}</style>` +
-    figure(mood) +
+    `<defs><clipPath id="bd"><path d="${BODY_PATH}"/></clipPath></defs>` +
+    figure(mood, outfit) +
     minis +
     `</svg>`
   )
@@ -205,6 +314,22 @@ const run = atom({ plugin: 'progress-buddy', key: 'run' } as const, 'idle')
 let activityNow = ''
 const agentActivity: Record<string, string> = {}
 let cycleAt = 0
+
+// Party hat when done, nightcap when asleep, hard hat and hi-vis vest for tools; otherwise an everyday
+// outfit that changes with each new task. The start point comes from the folder the session runs in.
+const EVERYDAY_HATS: Hat[] = ['cap', 'beanie', 'none']
+const EVERYDAY_JACKETS: Jacket[] = ['jacket', 'hoodie', 'none']
+let wardrobe = 0
+
+function outfitFor(feeling: Mood): Outfit {
+  const everydayHat = EVERYDAY_HATS[wardrobe % EVERYDAY_HATS.length]!
+  const everydayJacket = EVERYDAY_JACKETS[Math.floor(wardrobe / EVERYDAY_HATS.length) % EVERYDAY_JACKETS.length]!
+
+  return {
+    hat: feeling === 'happy' ? 'party' : feeling === 'sleepy' ? 'nightcap' : feeling === 'tool' ? 'hardhat' : everydayHat,
+    jacket: feeling === 'tool' ? 'vest' : everydayJacket,
+  }
+}
 
 const CYCLE: Mood[] = ['happy', 'looking', 'sleepy', 'thinking']
 const CYCLE_MS = 4500
@@ -340,6 +465,7 @@ export function describe(e: Record<string, unknown>): string {
 
 const LOOKING = ['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch', 'ToolSearch']
 const CODING = ['Edit', 'Write', 'NotebookEdit']
+const SHELL = ['Bash', 'PowerShell']
 
 export const register: Register = on => {
   on('tool.call', async ($, e, next) => {
@@ -360,7 +486,10 @@ export const register: Register = on => {
     if (isPlain) {
       $.ui.invalidate('ui.render')
     }
-    await setMood($, CODING.includes(tool) ? 'coding' : LOOKING.includes(tool) ? 'looking' : 'working')
+    await setMood(
+      $,
+      CODING.includes(tool) ? 'coding' : SHELL.includes(tool) ? 'console' : LOOKING.includes(tool) ? 'looking' : 'tool',
+    )
 
     const ran = await next(e)
 
@@ -408,6 +537,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     $.clock.every(CYCLE_MS, () => void cycle($))
     $.clock.every(WATCHDOG_MS, () => watchdog($))
+    wardrobe = Array.from(e.cwd).reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) % 9973, 7)
 
     await $.tool.register({
       name: 'set_tasks',
@@ -447,6 +577,7 @@ export const register: Register = on => {
 
     if (list.every(t => t.status === 'completed')) {
       const firstLine = e.text.trim().split('\n')[0] ?? ''
+      wardrobe += 4
       await write($, () => [])
       await update($, title, () => firstLine.slice(0, 80))
     }
@@ -531,10 +662,10 @@ export const register: Register = on => {
       const buddies = Math.min(3, props.agents.length)
       avatar = (
         <Svg
-          source={face(feeling, buddies)}
+          source={face(feeling, buddies, outfitFor(feeling))}
           alt={`Claude is ${feeling}${buddies > 0 ? `, with ${buddies} helpers` : ''}`}
-          width={Math.round((64 + buddies * 26) * 0.75)}
-          height={48}
+          width={Math.round((64 + buddies * BUDDY) * FACE_SCALE)}
+          height={FACE_HEIGHT}
         />
       )
     }
