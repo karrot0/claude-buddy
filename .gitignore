@@ -1,0 +1,5 @@
+plugins/*/.claude-plugin/types/
+plugins/*/tsconfig.json
+plugins/*/tests/
+node_modules/
+*.log
