@@ -74,6 +74,12 @@ function start(surface: ClientSurface<State>) {
 
     const gap = fraction(latest) - shown
     const toneGap = (latest.complete ? 1 : 0) - tone
+
+    // Nothing moves while idle, so ask for no redraw: every redraw is one more render the surface must answer in time.
+    if (latest.state === 'idle' && gap === 0 && toneGap === 0) {
+      return
+    }
+
     frame += 1
     shown = Math.abs(gap) < 0.002 ? fraction(latest) : shown + gap * 0.22
     tone = Math.abs(toneGap) < 0.01 ? (latest.complete ? 1 : 0) : tone + toneGap * 0.14

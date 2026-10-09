@@ -8,6 +8,9 @@ const BAND = {
 
 const IN = { in: 'band' } as const
 
+// The band learns new text from its own heartbeat, so let one land before looking.
+const BEAT = 300
+
 const AGENT = { id: 'a1', description: 'find the login code', type: 'Explore', status: 'running' } as const
 
 test('the plugin tool feeds the band where the session has no task tools', async ($, on) => {
@@ -34,11 +37,12 @@ test('the plugin tool feeds the band where the session has no task tools', async
   await $.tool.call({ tool: 'Read', file_path: 'C:\\mods\\hooks\\register.tsx' })
 
   const during = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await during.advance(BEAT)
   expect(await during.find({ type: 'Text', text: 'Reading register.tsx', ...IN })).toBeDefined()
   expect(await during.find({ type: 'Text', text: '(◉_◉)' })).toBeDefined()
 
   await $.tool.call({ tool: 'Read', file_path: 'C:\\mods\\hooks\\band.tsx' })
-  await during.advance(300)
+  await during.advance(BEAT)
   expect(await during.find({ type: 'Text', text: 'Reading band.tsx', ...IN })).toBeDefined()
   await during.unmount()
 
@@ -63,6 +67,7 @@ test('the band is there before any prompt, and a finished turn leaves a full gre
   await $.tool.call({ tool: 'Read', file_path: 'hooks/register.tsx' })
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await ui.advance(BEAT)
   expect(await ui.find({ type: 'Text', text: 'change the animation', ...IN })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: 'Reading register.tsx', ...IN })).toBeDefined()
   const before = (await ui.findAll({ type: 'Text', text: '█', ...IN })).length
@@ -73,6 +78,7 @@ test('the band is there before any prompt, and a finished turn leaves a full gre
   await $.tool.call({ tool: 'Edit', file_path: 'hooks/face.ts', old_string: 'a', new_string: 'b' })
 
   const coding = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await coding.advance(BEAT)
   expect(await coding.find({ type: 'Text', text: '(•̀_•́)⌨' })).toBeDefined()
   expect(await coding.find({ type: 'Text', text: 'Editing face.ts', ...IN })).toBeDefined()
   await coding.unmount()
@@ -80,6 +86,8 @@ test('the band is there before any prompt, and a finished turn leaves a full gre
   await $.turn.complete({ answer: '' } as never)
 
   const done = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await done.advance(BEAT)
+  await done.advance(3000)
   expect(await done.find({ type: 'Text', text: 'change the animation', ...IN })).toBeDefined()
   expect(await done.find({ type: 'Text', text: '✓ Done', ...IN })).toBeDefined()
   expect((await done.findAll({ type: 'Text', text: '█', ...IN })).length).toBe(24)
@@ -132,6 +140,7 @@ test('running subagents are listed with what each is doing, and do not touch the
   await $.tool.call({ tool: 'Read', file_path: 'auth.ts', agentId: 'a1' } as never)
 
   const busy = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await busy.advance(BEAT)
   expect(await busy.find({ type: 'Text', text: 'find the login code · Reading auth.ts', ...IN })).toBeDefined()
   await busy.unmount()
 })
@@ -158,49 +167,6 @@ test('once a turn is over the face keeps cycling through moods', async ($, on) =
   expect(new Set(seen).size).toBeGreaterThan(2)
 })
 
-test('a band that never comes alive is replaced by a plain bar; a live one is left alone', async ($, on) => {
-  const clock = mock.clock(on)
-  on('agent.list', () => ({ value: [] }))
-  on('tool.register', () => ({ value: { tool: 'mcp__progress-buddy__set_tasks' } }) as never)
-  on('session.start', (_, e) => ({ cwd: e.cwd }) as never)
-
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true } as never)
-  await $.tool.call({
-    tool: 'mcp__progress-buddy__set_tasks',
-    title: 'Changing the animation',
-    todos: [
-      { content: 'Plan', status: 'completed' },
-      { content: 'Build', activeForm: 'Building', status: 'in_progress' },
-    ],
-  })
-
-  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await ui.find({ type: 'Client' })).toBeDefined()
-
-  await clock.advance(7000)
-  expect(await ui.find({ type: 'Client' })).toBeUndefined()
-  expect(await ui.find({ type: 'Text', text: '1/2 · 50%' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'Building' })).toBeDefined()
-  expect(await ui.find({ type: 'Svg' })).toBeDefined()
-  await ui.unmount()
-})
-
-test('a band that sends its heartbeat keeps the animated bar', async ($, on) => {
-  const clock = mock.clock(on)
-  on('agent.list', () => ({ value: [] }))
-  on('tool.register', () => ({ value: { tool: 'mcp__progress-buddy__set_tasks' } }) as never)
-  on('session.start', (_, e) => ({ cwd: e.cwd }) as never)
-
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true } as never)
-
-  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  await ui.advance(300)
-  await clock.advance(7000)
-  expect(await ui.find({ type: 'Client' })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: 'Ready', ...IN })).toBeDefined()
-  await ui.unmount()
-})
-
 test('shell commands show the console face and other tools the tool face', async ($, on) => {
   on('agent.list', () => ({ value: [] }))
   on('tool.call', { tool: 'Bash' }, () => ({ result: {} as never }))
@@ -216,6 +182,7 @@ test('shell commands show the console face and other tools the tool face', async
   await $.tool.call({ tool: 'Skill', skill: 'pdf' } as never)
 
   const tool = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await tool.advance(BEAT)
   expect(await tool.find({ type: 'Text', text: '(•̀ᴗ•́)و' })).toBeDefined()
   expect(await tool.find({ type: 'Text', text: 'Loading skill pdf', ...IN })).toBeDefined()
   await tool.unmount()

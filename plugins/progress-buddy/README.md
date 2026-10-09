@@ -12,7 +12,7 @@ A progress band for [Claude Code](https://claude.com/claude-code) with a little 
 - **A gradient progress bar** that fills as steps finish, eases toward its new value, and flows pink → violet → cyan. With no step list it shows a sweeping loader instead.
 - **Done state.** When the work finishes the bar fills, turns green, pulses, and reads `✓ Done`. It stays until your next prompt.
 - **Always there.** The band is visible from the start of a session. Idle, it says "Ready when you are".
-- **A plain fallback.** If the surface cannot run the animated band, the plugin notices within a few seconds and draws a plain, unanimated bar with the same information instead.
+- **A plain fallback.** If the surface reports that the animated band failed (the desktop app drops it when a redraw goes unanswered for two seconds), the plugin draws a plain, unanimated bar with the same information, and tries the animated one again on your next prompt.
 - **A buddy with moods.** The face follows the work: thinking, looking (reading and searching), coding (edits and writes, at a laptop), console (shell commands, behind a little terminal), tool (everything else, with a wrench and spinning gears), oops (a tool failed), happy (done), sleepy. Between turns it cycles through faces.
 - **Clothes.** Hats and a jacket that sit on the body, so they follow every face and animation. A party hat when the work is done, a nightcap when asleep, a hard hat and hi-vis vest for tools; otherwise an everyday cap or beanie and a jacket or hoodie that change with each new task.
 - **Subagents.** Each running subagent gets its own line (`↳ Explore · find the login code · Reading auth.ts`) and a small working copy of the buddy beside the main one (up to three).
@@ -50,7 +50,7 @@ Start a new session and send a prompt.
 
 ## What the plugin does with your session
 
-Everything runs locally inside Claude Code. The plugin makes no network requests, spawns no processes, reads and writes no files, and does not depend on or call any other plugin. It uses only these calls on the hook object: `$.state.get`/`set` (its own few values), `$.clock.every` (two timers: one cycles the face while idle, one checks the band is alive), `$.tool.register` (adds one tool, below), `$.agent.list` (read-only list of running subagents), `$.ui.resolve` (to draw), and `$.ui.invalidate` (to redraw the band).
+Everything runs locally inside Claude Code. The plugin makes no network requests, spawns no processes, reads and writes no files, and does not depend on or call any other plugin. It uses only these calls on the hook object: `$.state.get`/`set` (its own few values), `$.clock.every` (one timer that cycles the face while idle), `$.tool.register` (adds one tool, below), `$.agent.list` (read-only list of running subagents), `$.ui.resolve` (to draw), and `$.ui.invalidate` (to redraw the band).
 
 **It never submits a prompt of its own, runs a tool or command itself, changes a tool's input, or blocks another tool's call.** Every hook below passes the event on unchanged, except that its own tool refuses malformed input.
 
@@ -64,6 +64,7 @@ Everything runs locally inside Claude Code. The plugin makes no network requests
 | `session.start` | Registers `set_tasks` and starts the face-cycling timer. | Adds a tool |
 | `ui.render` on `AbovePrompt` | Draws the band. | UI only |
 | `ui.message` | Answers the band's own heartbeat (the number `1`, posted by the surface module `hooks/band.tsx` four times a second) with the text to display. Nothing else is sent anywhere. | No |
+| `ui.fault` | Hears that the animated band failed on the surface and switches to the plain bar. Observes only. | No |
 
 ### The tool it adds
 

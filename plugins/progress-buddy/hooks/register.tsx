@@ -334,28 +334,16 @@ function outfitFor(feeling: Mood): Outfit {
 const CYCLE: Mood[] = ['happy', 'looking', 'sleepy', 'thinking']
 const CYCLE_MS = 4500
 
-// The animated band posts a heartbeat four times a second. If one was drawn and none has ever arrived,
-// the surface could not run it, so the hooks module draws a plain bar itself instead.
-// ponytail: sticky for the session once tripped; retry the animated band on a new prompt if that proves too strict.
-const WATCHDOG_MS = 3000
+// The surface disposes the animated band when it faults (the desktop does so if a render goes unanswered
+// for two seconds). ui.fault says so, and the hooks module then draws a plain bar itself. Each new prompt
+// tries the animated band again, until it has faulted MAX_FAULTS times in the session.
 const PLAIN_CELLS = 30
-let beats = 0
-let silentChecks = 0
-let isBandShown = false
+const MAX_FAULTS = 3
+let faults = 0
 let isPlain = false
-
-function watchdog($: EngineInterface) {
-  if (isPlain || !isBandShown || beats > 0) {
-    return
-  }
-
-  silentChecks += 1
-
-  if (silentChecks >= 2) {
-    isPlain = true
-    $.ui.invalidate('ui.render')
-  }
-}
+// What the band was last handed. Redraws hand it the same value again, so a redraw alone never makes the
+// surface render the band; fresh values reach it through its own heartbeat instead.
+let lastSent: Awaited<ReturnType<typeof bandProps>> | undefined
 
 function write($: Parameters<typeof update>[0], fn: (list: Task[]) => Task[]) {
   return update($, tasks, list => fn(list ?? []))
@@ -387,7 +375,7 @@ async function runningAgents($: EngineInterface) {
 
   return all
     .filter(a => a.teammateId === undefined && a.status === 'running')
-    .map(a => ({ label: a.description || a.type, activity: agentActivity[a.id] ?? 'Starting' }))
+    .map(a => ({ label: (a.description || a.type).slice(0, 60), activity: agentActivity[a.id] ?? 'Starting' }))
 }
 
 async function bandProps($: EngineInterface) {
@@ -528,7 +516,7 @@ export const register: Register = on => {
     await write($, () => fromTodos(todos))
 
     if (typeof newTitle === 'string') {
-      await update($, title, () => newTitle)
+      await update($, title, () => newTitle.slice(0, 120))
     }
 
     return { result: `${todos.filter(t => t.status === 'completed').length}/${todos.length} done` }
@@ -536,7 +524,6 @@ export const register: Register = on => {
 
   on('session.start', async ($, e, next) => {
     $.clock.every(CYCLE_MS, () => void cycle($))
-    $.clock.every(WATCHDOG_MS, () => watchdog($))
     wardrobe = Array.from(e.cwd).reduce((sum, ch) => (sum * 31 + ch.charCodeAt(0)) % 9973, 7)
 
     await $.tool.register({
@@ -572,6 +559,12 @@ export const register: Register = on => {
 
   on('prompt.submit', async ($, e, next) => {
     const list = await read($, tasks)
+
+    if (isPlain && faults < MAX_FAULTS) {
+      isPlain = false
+      $.ui.invalidate('ui.render')
+    }
+
     await setMood($, 'thinking')
     await setRun($, 'running')
 
@@ -638,9 +631,19 @@ export const register: Register = on => {
       return next(e)
     }
 
-    beats += 1
+    lastSent = await bandProps($)
 
-    return { props: await bandProps($) }
+    return { props: lastSent }
+  })
+
+  on('ui.fault', ($, e, next) => {
+    if (e.element === 'band') {
+      faults += 1
+      isPlain = true
+      lastSent = undefined
+    }
+
+    return next(e)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -671,8 +674,8 @@ export const register: Register = on => {
     }
 
     if (!isPlain && (e.surface === 'terminal' || e.surface === 'desktop')) {
-      isBandShown = true
-      band = $.ui.resolve(e).Client({ key: 'band', module: './band.tsx', props, flexGrow: 1 })
+      lastSent ??= props
+      band = $.ui.resolve(e).Client({ key: 'band', module: './band.tsx', props: lastSent, flexGrow: 1 })
     } else {
       const share = props.complete ? 1 : props.total > 0 ? props.done / props.total : 0
       const filled = Math.round(share * PLAIN_CELLS)
