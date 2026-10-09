@@ -59,7 +59,7 @@ Everything runs locally inside Claude Code. The plugin makes no network requests
 | `tool.call` (every tool) | Reads the tool name and a few input fields (file name, search pattern, description, URL, or the first words of a shell command, cut to 120 characters) to print a short "Editing auth.ts" line and pick a mood. Keeps it in memory only; it is shown in the band and never stored or sent. Calls from subagents are tracked separately. Marks the mood "oops" if the call returns an error. Calls `next(e)` and returns its result untouched. | No |
 | `tool.call` for `TodoWrite`, `TaskCreate`, `TaskUpdate` | After the call succeeds, copies the step list into the band. Returns the real result untouched. | No |
 | `tool.call` for `mcp__progress-buddy__set_tasks` | Answers the plugin's own tool (see below). This is the only place the plugin stands in for a tool. | Its own tool only |
-| `prompt.submit` | Marks the turn as running. If the previous work is finished, uses the first line of your prompt (80 characters) as the new task title. Returns your prompt unchanged. | No |
+| `prompt.submit` | Marks the turn as running. If the previous work is finished and the prompt is one you typed, uses its first line (80 characters) as the new task title. Prompts you did not type (a background task notification, another session, an engine notice, or anything starting with a markup tag) keep the current title. Returns the prompt unchanged. | No |
 | `turn.complete` | Marks the run done or idle and picks the happy or sleepy face. | No |
 | `session.start` | Registers `set_tasks` and starts the face-cycling timer. | Adds a tool |
 | `ui.render` on `AbovePrompt` | Draws the band. | UI only |

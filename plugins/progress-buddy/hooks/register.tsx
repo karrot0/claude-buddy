@@ -387,7 +387,7 @@ async function bandProps($: EngineInterface) {
   const complete = list.length > 0 ? done === list.length : state === 'done'
 
   return {
-    task: list.length === 0 ? name || 'Ready' : name || step,
+    task: list.length === 0 ? name || (state === 'running' ? 'Working' : 'Ready') : name || step,
     subtask: activityNow || (list.length > 0 && name ? step : state === 'running' ? 'Thinking' : 'Ready when you are'),
     done,
     total: list.length,
@@ -449,6 +449,31 @@ export function describe(e: Record<string, unknown>): string {
   }
 
   return VERBS[tool] === undefined ? subject : `${VERBS[tool]} ${subject}`
+}
+
+// A turn can start from something the person did not type: a background task's notification, another
+// session's message, an engine notice. Those keep the current task title instead of becoming it.
+const NOT_A_REQUEST = [
+  'task-notification',
+  'peer',
+  'peer-send-message',
+  'projects-relay',
+  'coordinator',
+  'observer',
+  'observer-activity',
+  'unclassified',
+  'plugin',
+]
+
+function requestTitle(text: string, origin: string | undefined): string | undefined {
+  const firstLine =
+    text
+      .split('\n')
+      .find(line => line.trim() !== '')
+      ?.trim() ?? ''
+  const isMarkup = /^<\/?[a-z][\w-]*[\s>]/i.test(firstLine)
+
+  return firstLine === '' || isMarkup || NOT_A_REQUEST.includes(origin ?? '') ? undefined : firstLine.slice(0, 80)
 }
 
 const LOOKING = ['Read', 'Grep', 'Glob', 'WebFetch', 'WebSearch', 'ToolSearch']
@@ -569,10 +594,13 @@ export const register: Register = on => {
     await setRun($, 'running')
 
     if (list.every(t => t.status === 'completed')) {
-      const firstLine = e.text.trim().split('\n')[0] ?? ''
-      wardrobe += 4
+      const asked = requestTitle(e.text, e.origin?.kind)
       await write($, () => [])
-      await update($, title, () => firstLine.slice(0, 80))
+
+      if (asked !== undefined) {
+        wardrobe += 4
+        await update($, title, () => asked)
+      }
     }
 
     return next(e)

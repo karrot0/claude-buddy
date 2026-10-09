@@ -191,3 +191,39 @@ test('shell commands show the console face and other tools the tool face', async
   expect(await drawn.find({ type: 'Svg' })).toBeDefined()
   await drawn.unmount()
 })
+
+test('a notification or other injected prompt keeps the task title the person gave', async ($, on) => {
+  on('agent.list', () => ({ value: [] }))
+  on('prompt.submit', (_, e) => ({ text: e.text }) as never)
+  on('turn.complete', () => ({ text: '' }) as never)
+
+  await $.prompt.submit({ text: 'fix the login redirect' } as never)
+  await $.turn.complete({ answer: '' } as never)
+
+  await $.prompt.submit({
+    text: '<task-notification>\n<task-id>bk0rcwxsm</task-id>\n</task-notification>',
+    origin: { kind: 'task-notification' },
+  } as never)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect(await ui.find({ type: 'Text', text: 'fix the login redirect', ...IN })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'task-notification', ...IN })).toBeUndefined()
+  await ui.unmount()
+
+  await $.turn.complete({ answer: '' } as never)
+  await $.prompt.submit({ text: '<system_notification>\nthe build finished' } as never)
+
+  const tagged = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await tagged.advance(BEAT)
+  expect(await tagged.find({ type: 'Text', text: 'fix the login redirect', ...IN })).toBeDefined()
+  expect(await tagged.find({ type: 'Text', text: 'system_notification', ...IN })).toBeUndefined()
+  await tagged.unmount()
+
+  await $.turn.complete({ answer: '' } as never)
+  await $.prompt.submit({ text: '\n\nnow add a logout button' } as never)
+
+  const next = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  await next.advance(BEAT)
+  expect(await next.find({ type: 'Text', text: 'now add a logout button', ...IN })).toBeDefined()
+  await next.unmount()
+})
